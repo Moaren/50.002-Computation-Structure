@@ -3,11 +3,11 @@
   <files>
     <src>seven_seg.luc</src>
     <src>multi_seven_seg.luc</src>
-    <src top="true">mojo_top.luc</src>
     <src>counting.luc</src>
+    <src top="true">mojo_top.luc</src>
     <ucf lib="true">io_shield.ucf</ucf>
-    <ucf>custom.ucf</ucf>
     <ucf>mojo.ucf</ucf>
+    <ucf>custom.ucf</ucf>
     <component>decoder.luc</component>
     <component>reset_conditioner.luc</component>
     <component>counter.luc</component>
