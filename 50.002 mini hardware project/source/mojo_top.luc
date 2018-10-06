@@ -1,0 +1,325 @@
+module mojo_top (
+    input clk,              // 50MHz clock
+    input rst_n,            // reset button (active low)
+    output led [8],         // 8 user controllable LEDs
+    input cclk,             // configuration clock, AVR ready when high
+    output spi_miso,        // AVR SPI MISO
+    input spi_ss,           // AVR SPI Slave Select
+    input spi_mosi,         // AVR SPI MOSI
+    input spi_sck,          // AVR SPI Clock
+    output spi_channel [4], // AVR general purpose pins (used by default to select ADC channel)
+    input avr_tx,           // AVR TX (FPGA RX)
+    output avr_rx,          // AVR RX (FPGA TX)
+    input avr_rx_busy,      // AVR RX buffer full
+    
+    output io_led [3][8],   // LEDs on IO Shield
+    output io_seg [8],      // 7-segment LEDs on IO Shield
+    output io_sel [4],      // Digit select on IO Shield
+    input io_button [5],    // 5 buttons on IO Shield
+    input io_dip [3][8],     // DIP switches on IO Shield
+    
+    //Outputs: a, b, and carryin. Inputs: sum and carryout.
+    output a,
+    output b,
+    output carryin,
+    input sum,
+    input carryout
+    
+  ) { 
+   
+  sig rst;                  // reset signal
+  
+  .clk(clk) {
+    // The reset conditioner is used to synchronize the reset signal to the FPGA
+    // clock. This ensures the entire FPGA comes out of reset at the same time.
+    reset_conditioner reset_cond;
+    
+    // finite state machine (FSM) with 11 states, 8 testing states and 1 default state (IDLE)
+    // a FAIL and PASS state
+    fsm state = {IDLE, STATE1, STATE2, STATE3, STATE4, STATE5, STATE6, STATE7, STATE8, FAIL, PASS};
+    
+    .rst(rst) {
+      multi_seven_seg seg;
+      counting nextState;
+    }
+  }
+  
+  always {
+
+    reset_cond.in = ~rst_n;   // input raw inverted reset signal
+    rst = reset_cond.out;     // conditioned reset
+    
+    led = c{3b0, io_button};  // connect buttons to LEDs
+    spi_miso = bz;            // not using SPI
+    spi_channel = bzzzz;      // not using flags
+    avr_rx = bz;              // not using serial port
+    
+    // default display : 0000
+    seg.values = {5d0, 5d0, 5d0, 5d0};
+    
+    io_seg = ~seg.seg; // connect segments to the driver
+    io_sel = ~seg.sel; // connect digit select to the driver
+    
+    io_led = 3x{{8h00}}; //turn off LED
+    
+    //connect the outputs to the three right most switches for manual testing
+    a = io_dip[0][0];
+    b = io_dip[0][1];
+    carryin = io_dip[0][2];
+    
+    //manual tesing mode: when 8th switch is on
+    if (io_dip[0][7] == 1){
+      if ((io_dip[0][0] == 0 & io_dip[0][1] == 0 & io_dip[0][2] == 0)&(sum == 0 & carryout == 0)){
+        seg.values = {5d14, 5d11, 5d5, 5d5};// "PASS"
+      }else if ((io_dip[0][0] == 0 & io_dip[0][1] == 0 & io_dip[0][2] == 1)&(sum == 1 & carryout == 0)){
+        seg.values = {5d14, 5d11, 5d5, 5d5};
+      }else if ((io_dip[0][0] == 0 & io_dip[0][1] == 1 & io_dip[0][2] == 0)&(sum == 1 & carryout == 0)){
+        seg.values = {5d14, 5d11, 5d5, 5d5};
+      }else if ((io_dip[0][0] == 0 & io_dip[0][1] == 1 & io_dip[0][2] == 1)&(sum == 0 & carryout == 1)){
+        seg.values = {5d14, 5d11, 5d5, 5d5};
+      }else if ((io_dip[0][0] == 1 & io_dip[0][1] == 0 & io_dip[0][2] == 0)&(sum == 1 & carryout == 0)){
+        seg.values = {5d14, 5d11, 5d5, 5d5};
+      }else if ((io_dip[0][0] == 1 & io_dip[0][1] == 0 & io_dip[0][2] == 1)&(sum == 0 & carryout == 1)){
+        seg.values = {5d14, 5d11, 5d5, 5d5};
+      }else if ((io_dip[0][0] == 1 & io_dip[0][1] == 1 & io_dip[0][2] == 0)&(sum == 0 & carryout == 1)){
+        seg.values = {5d14, 5d11, 5d5, 5d5};
+      }else if ((io_dip[0][0] == 1 & io_dip[0][1] == 1 & io_dip[0][2] == 1)&(sum == 1 & carryout == 1)){
+        seg.values = {5d14, 5d11, 5d5, 5d5};
+      }else {
+        seg.values = {5d10,5d11,5d12,5d13};// "FAIL"
+      }
+    }
+
+    
+    //we use case statements to define the response for different states in the stae machine
+    case (state.q) {
+      
+      
+      // Idel state is the default state. 
+      // If the center button is pressed, the states machine begins the cycle, starting at state TEST1.
+      // Explanation of the states is included only in TEST1, as all of the states are similar.
+      
+      //default
+      state.IDLE:
+      
+        if(io_button[1]) {
+          state.d = state.STATE1;
+        }
+      
+      //000
+      state.STATE1:
+      
+        a = 0;
+        b = 0;
+        carryin = 0;
+        
+        // We write to the left most 8 leds to show which test state is currently active.
+        io_led[2][7] = 1;
+        
+        // The last three digits represent a, b, carryin respectively
+        seg.values = {5d0, 5d0, 5d0, 5d0};
+        
+        // Check if sum and carryout are correct. 
+        // If value of both sum AND carryout are correct go to the next case, if either of them is wrong, go to fail state
+        
+        if (sum == 0 && carryout == 0 && nextState.next_state == 1) {
+          state.d = state.STATE2;
+        }
+
+        
+        else if (sum != 0 || carryout != 0 && nextState.next_state == 1) {
+          state.d = state.FAIL;
+        }
+        
+        // Pressing reset button will reset the state to default state(idle state)
+        
+        if (rst_n == 0) {
+          state.d = state.IDLE;
+        }
+
+   
+      //001
+      state.STATE2:
+        a = 0;
+        b = 0;
+        carryin = 1;
+        
+        io_led[2][6] = 1;
+        seg.values = {5d0, 5d0, 5d0, 5d1};
+
+        
+        if (sum == 1 & carryout == 0 & nextState.next_state == 1) {
+          state.d = state.STATE3;
+        }
+        
+        else if ((sum != 1 | carryout != 0) & nextState.next_state == 1) {
+          state.d = state.FAIL;
+        }
+        
+        if(rst_n == 0) {
+          state.d = state.IDLE;
+        }
+        
+      //010
+      state.STATE3:
+        a = 0;
+        b = 1;
+        carryin = 0;
+        
+        io_led[2][5] = 1;
+        seg.values = {5d0, 5d0, 5d1, 5d0};
+        
+        if (sum == 1 & carryout == 0 & nextState.next_state == 1) {
+          state.d = state.STATE4;
+        }
+         
+        else if ((sum != 1 | carryout != 0) & nextState.next_state == 1) {
+          state.d = state.FAIL;
+        }
+        
+        if(rst_n == 0) {
+          state.d = state.IDLE;
+        }
+        
+      // TEST FOUR: 011 
+      state.STATE4:
+        a = 0;
+        b = 1;
+        carryin = 1;
+        
+        io_led[2][4] = 1;
+        seg.values = {5d0, 5d0, 5d1, 5d1};
+        
+        if (sum == 0 & carryout == 1 & nextState.next_state == 1) {
+          state.d = state.STATE5;
+        }
+         
+        else if ((sum != 0 | carryout != 1) & nextState.next_state == 1) {
+          state.d = state.FAIL;
+        }
+        
+        if(rst_n == 0) {
+          state.d = state.IDLE;
+        }
+     
+      //100
+      state.STATE5:
+        a = 1;
+        b = 0;
+        carryin = 0;
+        
+        io_led[2][3] = 1;
+        seg.values = {5d0, 5d1, 5d0, 5d0};
+        
+        if (sum == 1 & carryout == 0 & nextState.next_state == 1) {
+          state.d = state.STATE6;
+        }
+         
+        else if ((sum != 1 | carryout != 0) & nextState.next_state == 1) {
+          state.d = state.FAIL;
+        }
+        
+        if(rst_n == 0) {
+          state.d = state.IDLE;
+        }
+        
+        
+      //101
+      state.STATE6:
+        a = 1;
+        b = 0;
+        carryin = 1;
+        
+        io_led[2][2] = 1;
+        seg.values = {5d0, 5d1, 5d0, 5d1};
+        
+        if (sum == 0 & carryout == 1 & nextState.next_state == 1) {
+          state.d = state.STATE7;
+        }
+         
+        else if ((sum != 0 | carryout != 1) & nextState.next_state == 1) {
+          state.d = state.FAIL;
+        }
+        
+        if(rst_n == 0) {
+          state.d = state.IDLE;
+        }
+        
+      //110
+      state.STATE7:
+        a = 1;
+        b = 1;
+        carryin = 0;
+        
+        io_led[2][1] = 1;
+        seg.values = {5d0, 5d1, 5d1, 5d0};
+        
+        if (sum == 0 & carryout == 1 & nextState.next_state == 1) {
+          state.d = state.STATE8;
+        }
+         
+        else if ((sum != 0 | carryout != 1) & nextState.next_state == 1) {
+          state.d = state.FAIL;
+        }
+        
+        if(rst_n == 0) {
+          state.d = state.IDLE;
+        }
+        
+      //111
+      state.STATE8:
+        a = 1;
+        b = 1;
+        carryin = 1;
+        
+        io_led[2][0] = 1;
+        seg.values = {5d0, 5d1, 5d1, 5d1};
+        
+        if (sum == 1 & carryout == 1 & nextState.next_state == 1) {
+          state.d = state.PASS;
+        }
+         
+        else if ((sum != 1 | carryout != 1) & nextState.next_state == 1) {
+          state.d = state.FAIL;
+        }
+        
+        if(rst_n == 0) {
+          state.d = state.IDLE;
+        }
+      
+      //fail    
+      state.FAIL:
+        
+
+        seg.values = {5d10, 5d11, 5d12, 5d13};
+     
+        if (rst_n == 0) {
+          state.d = state.IDLE;
+        }
+        
+        if(io_button[1]) {
+          state.d = state.STATE1;
+        }
+        
+        if(io_button[2]) {
+          state.d = state.IDLE;
+        }
+
+      //pass if all 8 states are correct
+      state.PASS:
+
+        seg.values = {5d14, 5d11, 5d5, 5d5};
+        
+        if (rst_n == 0) {
+          state.d = state.IDLE;
+        }
+        if(io_button[1]) {
+          state.d = state.STATE1;
+        }
+        
+        if(io_button[2]) {
+          state.d = state.IDLE;}
+
+      }
+    }
+}

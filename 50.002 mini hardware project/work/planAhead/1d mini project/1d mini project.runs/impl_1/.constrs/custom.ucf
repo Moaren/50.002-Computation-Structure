@@ -1,0 +1,11 @@
+NET "sum" LOC = P51;
+NET "sum" IOSTANDARD = LVTTL;
+NET "carryout" LOC = P41;
+NET "carryout" IOSTANDARD = LVTTL;
+
+NET "a" LOC = P30;
+NET "a" IOSTANDARD = LVTTL;
+NET "b" LOC = P27;
+NET "b" IOSTANDARD = LVTTL;
+NET "carryin" LOC = P24;
+NET "carryin" IOSTANDARD = LVTTL;

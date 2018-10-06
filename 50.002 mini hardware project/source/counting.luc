@@ -1,0 +1,18 @@
+module counting (
+    input clk,  // clock
+    input rst,  // reset
+    output next_state
+ 
+  ) {
+
+  dff ctr[26](.clk(clk));
+  
+  always {
+    next_state = ctr.q[25];
+    ctr.d = ctr.q + 1;
+    if (ctr.q[25]==1) {
+      ctr.d[25] = 0;
+    } 
+    
+  }
+}

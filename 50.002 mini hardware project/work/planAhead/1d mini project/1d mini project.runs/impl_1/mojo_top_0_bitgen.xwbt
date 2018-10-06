@@ -1,0 +1,8 @@
+INTSTYLE=pa
+INFILE=C:\Users\好好学习\Documents\mojo\1d mini hardware project - 副本\work\planAhead\1d mini project\1d mini project.runs\impl_1\mojo_top_0_routed.ncd
+OUTFILE=C:\Users\好好学习\Documents\mojo\1d mini hardware project - 副本\work\planAhead\1d mini project\1d mini project.runs\impl_1\mojo_top_0.bit
+FAMILY=Spartan6
+PART=xc6slx9-2tqg144
+WORKINGDIR=C:\Users\好好学习\Documents\mojo\1d mini hardware project - 副本\work\planAhead\1d mini project\1d mini project.runs\impl_1
+LICENSE=WebPack
+USER_INFO=211602093_0_0_314
