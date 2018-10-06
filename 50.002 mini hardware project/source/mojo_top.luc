@@ -296,12 +296,9 @@ module mojo_top (
         if (rst_n == 0) {
           state.d = state.IDLE;
         }
+
         
         if(io_button[1]) {
-          state.d = state.STATE1;
-        }
-        
-        if(io_button[2]) {
           state.d = state.IDLE;
         }
 
@@ -313,11 +310,8 @@ module mojo_top (
         if (rst_n == 0) {
           state.d = state.IDLE;
         }
-        if(io_button[1]) {
-          state.d = state.STATE1;
-        }
         
-        if(io_button[2]) {
+        if(io_button[1]) {
           state.d = state.IDLE;}
 
       }
