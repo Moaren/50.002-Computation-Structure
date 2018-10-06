@@ -1,3 +1,5 @@
+//26-bit wide D flip-flop which serves as a counter to tick at specified timing (2.684 seconds)
+
 module counting (
     input clk,  // clock
     input rst,  // reset
@@ -5,13 +7,13 @@ module counting (
  
   ) {
 
-  dff ctr[26](.clk(clk));
+  dff ctr[28](.clk(clk));
   
   always {
-    next_state = ctr.q[25];
+    next_state = ctr.q[27];
     ctr.d = ctr.q + 1;
-    if (ctr.q[25]==1) {
-      ctr.d[25] = 0;
+    if (ctr.q[27]==1) {
+      ctr.d[27] = 0;
     } 
     
   }
