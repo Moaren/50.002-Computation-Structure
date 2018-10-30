@@ -1,0 +1,33 @@
+module adder (
+    input alufn[6], // 6 digits control signal
+    input a[16],
+    input b[16],
+    
+    output out[16], //output
+    output z,
+    output v,
+    output n,
+    output overflow //fail
+  ) {
+  
+  sig sub[16]; // for subtraction to calculate z,v,n
+  sig temp_out[16]; // as out is write only which cannot be read, a temperary sinal is required for calculation
+  always {
+    z = 0;
+    v = 0;
+    n = 0;
+    case(alufn[1:0]){
+      2b00: temp_out = a + b; // addition
+      2b01: temp_out = a - b; // subtraction
+      2b10: temp_out = a * b; // multiplication
+      2b11: temp_out = a - ((a/b)*b); //a mod b
+      default: temp_out = a + b; 
+    }
+    sub = a - b; //subtraction
+    z = ~|sub;
+    v = (a[15] & ~b[15] & (~sub[15])) | ((~a[15]) & (b[15]) & sub[15]);
+    n = sub[15];
+    out = temp_out;
+    overflow = ((a[15]) & (b[15]) & (~temp_out[15])) | ((~a[15]) & (~b[15]) & (temp_out[15]));
+  }
+}

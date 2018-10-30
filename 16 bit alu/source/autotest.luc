@@ -1,0 +1,391 @@
+module autotest (
+    input clk,
+    input rst,
+    input mode_switch,
+    output out[4][4],
+    output leds[3][8]
+  ) {
+
+
+  sig autotest_reset;
+  
+  dff counter[26](.clk(clk), .rst(autotest_reset)); // create counter as clock
+  dff led[3][8](.clk(clk), .rst(autotest_reset)); // connect LEDs
+
+  alu alu; // instantiate alu 
+  edge_detector testButton(.clk(clk), .in(mode_switch), #FALL(0));
+  
+  .clk(clk){
+    fsm state(.rst(autotest_reset)) = {BEGIN, ADD, ADD_OVER, SUB, SUB_OVER, AND, NAND, OR, NOR, XOR, XNOR, A, SHL, SHR, SRA, CMPEQ, CMPLT, CMPLE, MULTIPLY, MOD, PASS, FAIL}; // create states for testing each of the fsm.
+  }
+
+  always {
+    autotest_reset = testButton.out | rst;
+    counter.d = counter.q + 1;
+    leds = led.q;
+    leds[2][7] = 1;
+
+    case(state.q){
+      
+      state.BEGIN:
+        //default
+        alu.alufn=0;
+        out = {4d0,4d0,4d0,4d0};
+        alu.a =0;
+        alu.b=0;
+        if (counter.q[25]) {
+          state.d = state.ADD;
+        }
+      
+      // Comments for states (expect PASS and FAIL) are similar
+      state.ADD:
+        alu.alufn = 6b000000; // opcode
+        alu.a = 16b011; // set input value of a 
+        alu.b = 16b100; // set input value of b
+        //if (alu.out == 16b1111){  fail example
+        if (alu.out == 16b111){ // check whether result is correct
+          led.d[0][0] = 1; // turn on corresponding LED for passing case
+          out = {4d0,4d0,4d0,4d1}; //0001 as case 1
+          }
+        else {
+          out = {4d10,4d11,4d1,4d13}; //fail
+          state.d = state.FAIL;
+          }
+        if(counter.q[25]){ //after counts
+          state.d = state.ADD_OVER; // move towards next state
+        }
+
+      state.ADD_OVER:
+        alu.alufn = 6b000000; 
+        alu.a = 16b0100000000000000; 
+        alu.b = 16b0100000000000000; 
+        if (alu.overflow == 1){ 
+          led.d[0][1] = 1; 
+          out = {4d0,4d0,4d0,4d2}; 
+        }
+        else {
+          out = {4d10,4d11,4d1,4d13};
+          state.d = state.FAIL;
+        }
+        if(counter.q[25]){
+          state.d = state.SUB; 
+        }
+
+
+      state.SUB:
+        alu.alufn = 6b000001;  
+        alu.a = 16b100;  
+        alu.b = 16b011;  
+
+        if (alu.out == 16b1){  
+          led.d[0][2] = 1; 
+          out = {4d0,4d0,4d0,4d3};  
+        }
+        else {
+          out = {4d10,4d11,4d1,4d13};
+          state.d = state.FAIL;
+        }
+        if(counter.q[25]){
+          state.d = state.SUB_OVER;  
+        }
+
+      state.SUB_OVER:
+        alu.alufn = 6b000001;  
+        alu.a = 16b1011111111111111;
+        alu.b = 16b0100000000000000;
+
+        if (alu.out == 16b0111111111111111){
+            led.d[0][3] = 1; 
+            out = {4d0,4d0,4d0,4d4}; 
+        }
+        else {
+            out = {4d10,4d11,4d1,4d13};
+    
+            state.d = state.FAIL;
+        }
+        if(counter.q[25]){
+            state.d = state.AND;  
+        }
+
+      state.AND:
+        alu.alufn = 6b011000;  
+        alu.a = 16b01;
+        alu.b = 16b01;
+        if (alu.out == 16b1){  
+          led.d[0][4] = 1; 
+          out = {4d0,4d0,4d0,4d5}; 
+        }
+        else {
+          out = {4d10,4d11,4d1,4d13};
+       
+          state.d = state.FAIL;
+        }
+        if(counter.q[25]){
+          state.d = state.NAND;  
+        }
+
+      state.NAND:
+        alu.alufn = 6b010111;  
+        alu.a = 16b1000000000000000;
+        alu.b = 16b1000000000000011;
+        if (alu.out == 16b0111111111111111){ 
+          led.d[0][5] = 1; 
+          out = {4d0,4d0,4d0,4d6};  
+        }
+        else {
+            out = {4d10,4d11,4d1,4d13};
+     
+            state.d = state.FAIL;
+        }
+        if(counter.q[25]){
+            state.d = state.OR;  
+        }
+
+      state.OR:
+        alu.alufn = 6b011110;  
+        alu.a = 16b1010;
+        alu.b = 16b1111;
+        if (alu.out == 16b1111){ 
+       
+          led.d[0][6] = 1;
+          out = {4d0,4d0,4d0,4d7};  
+        }
+        else {
+          out = {4d10,4d11,4d1,4d13};
+
+          state.d = state.FAIL;
+        }
+        if(counter.q[25]){
+          state.d = state.NOR; 
+        }
+
+      state.NOR:
+        alu.alufn = 6b010001;  
+        alu.a = 16b0011;
+        alu.b = 16b0101;
+        if (alu.out == 16b1111111111111000){ 
+          led.d[0][7] = 1; 
+          out = {4d0,4d0,4d0,4d8};  
+        }
+        else {
+            out = {4d10,4d11,4d1,4d13};
+
+            state.d = state.FAIL;
+        }
+        if(counter.q[25]){
+            state.d = state.XOR;
+        }
+
+      state.XOR:
+        alu.alufn = 6b010110;  
+        alu.a = 16b1010;
+        alu.b = 16b1100;
+        if (alu.out == 16b0110){ 
+          led.d[1][0] = 1; 
+          out = {4d0,4d0,4d0,4d9};  
+        }
+        else {
+          out = {4d10,4d11,4d1,4d13};
+
+          state.d = state.FAIL;
+        }
+        if(counter.q[25]){
+          state.d = state.XNOR;  
+        }
+
+      state.XNOR:
+        alu.alufn = 6b011001;  
+        alu.a = 16b1010;
+        alu.b = 16b1100;
+        if (alu.out == 16b1111111111111001){  
+          led.d[1][1] = 1; 
+          out = {4d0,4d0,4d1,4d0}; 
+        }
+        else {
+            out = {4d10,4d11,4d1,  4d13};         
+            state.d = state.FAIL;
+        }
+        if(counter.q[25]){
+            state.d = state.A;  
+        }
+
+      state.A:
+        alu.alufn = 6b011010; 
+        alu.a = 16b1010;
+        alu.b = 16b1100;
+        if (alu.out == 16b1010){
+          led.d[1][2] = 1;
+          out = {4d0,4d0,4d1,4d1};
+        }
+        else {
+          out = {4d10,4d11,4d1,4d13};          
+          state.d = state.FAIL;
+        }
+        if(counter.q[25]){
+          state.d = state.CMPEQ;  
+        }
+
+      state.CMPEQ:
+        alu.alufn = 6b110010;  
+        alu.a = 16b1010;
+        alu.b = 16b1010;
+        if (alu.out == 1){  
+          led.d[1][3] = 1; 
+          out = {4d0,4d0,4d1,4d2}; 
+        }
+        else {
+          out = {4d10,4d11,4d1,4d13};
+          state.d = state.FAIL;
+        }
+        if(counter.q[25]){
+          state.d = state.CMPLT;  
+        }
+
+      state.CMPLT:
+        alu.alufn = 6b110100; 
+        alu.a = 16b1010;
+        alu.b = 16b1010;
+        if (alu.out == 0){
+          led.d[1][4] = 1; 
+          out = {4d0,4d0,4d1,4d3}; 
+        }
+        else {
+   
+          out = {4d10,4d11,4d1,4d13};
+          state.d = state.FAIL;
+        }
+        if(counter.q[25]){
+          state.d = state.CMPLE;  
+        }
+
+      state.CMPLE:
+        alu.alufn = 6b110110;  
+        alu.a = 16b1010;
+        alu.b = 16b1010;
+        if (alu.out == 1){
+          led.d[1][5] = 1; 
+          out = {4d0,4d0,4d1,4d4}; 
+        }
+   
+        else {
+          out = {4d10,4d11,4d1,4d13};
+          state.d = state.FAIL;
+        }
+        if(counter.q[25]){
+          state.d = state.SHL;
+        }
+
+      state.SHL:
+        alu.alufn = 6b100000; 
+        alu.a = 16b1010;
+        alu.b = 16b11;
+        if (alu.out == 16b1010000){
+          led.d[1][6] = 1; 
+          out = {4d0,4d0,4d1,4d5};  
+        }
+        else {
+          out = {4d10,4d11,4d1,4d13};
+         
+          state.d = state.FAIL;
+        }
+        if(counter.q[25]){
+          state.d = state.SHR;  
+        }
+
+      state.SHR:
+        alu.alufn = 6b100001; 
+        alu.a = 16b1010000;
+        alu.b = 16b11;
+        if (alu.out == 16b1010){  
+          led.d[1][7] = 1; 
+          out = {4d0,4d0,4d1,4d6};       
+        }
+        else {
+          out = {4d10,4d11,4d1,4d13};
+          state.d = state.FAIL;
+        }
+        if(counter.q[25]){
+          state.d = state.SRA;  
+        }
+
+      state.SRA:
+        alu.alufn = 6b100011; 
+        alu.a = 16b1000000000001000;
+        alu.b = 16b11; 
+        if (alu.out == 16b1111000000000001){  
+          led.d[2][0] = 1; 
+          out = {4d0,4d0,4d1,4d7}; 
+        }
+        else {
+          out = {4d10,4d11,4d1,4d13};
+          state.d = state.FAIL;
+        }
+        if(counter.q[25]){
+          state.d = state.MULTIPLY; 
+        }
+
+      state.MULTIPLY:
+        alu.alufn = 6b000010;  
+        alu.a = 16b100; 
+        alu.b = 16b011;  
+        if (alu.out == 16b0000000000001100){  
+          led.d[2][1] = 1; 
+         
+          out = {4d0,4d0,4d1,4d8};   
+        }
+        else {
+            out = {4d10,4d11,4d1,4d13};
+            state.d = state.FAIL;
+        }
+        if(counter.q[25]){
+            state.d = state.MOD;
+        }
+
+      state.MOD:
+        alu.alufn = 6b000011; 
+        alu.a = 16b100; 
+        alu.b = 16b011; 
+        if (alu.out == 16b0000000000000001){ 
+          led.d[2][2] = 1; 
+          out = {4d0,4d0,4d1,4d9};  
+        }
+        else {
+            out = {4d10,4d11,4d1,4d13};
+            state.d = state.FAIL;
+        }
+        if(counter.q[25]){
+
+            state.d = state.PASS;
+        }
+
+      state.PASS:
+        out = {4d14,4d11,4d5,4d5};
+        alu.a =0;
+        alu.b=0;
+        alu.alufn=0;
+        if (autotest_reset == 1) //reset
+          state.d = state.BEGIN;
+          
+      state.FAIL:
+        out = {4d10,4d11,4d1,4d13};
+        alu.a =0;
+        alu.b=0;
+        alu.alufn=0;
+        if (autotest_reset == 1) //reset
+          state.d = state.BEGIN;
+          
+
+
+      default:
+        state.d = state.BEGIN;
+        out = {4d0,4d0,4d0,4d0};
+        alu.a =0;
+        alu.b=0;
+        alu.alufn=0;
+    }
+    
+    if (counter.q[25] == 1) {
+        counter.d[25] = 0;
+     }
+  }
+}

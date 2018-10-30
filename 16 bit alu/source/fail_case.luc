@@ -1,0 +1,49 @@
+module fail_case (
+    input clk,  // clock
+    input rst,  // reset    
+    input mode_switch,
+    output out[4][4]
+  ) {
+  
+  sig autotest_reset;
+  alu alu;
+  dff counter[26](.clk(clk), .rst(autotest_reset)); // create counter as clock
+  edge_detector testButton(.clk(clk), .in(mode_switch), #FALL(0));
+  .clk(clk){
+    fsm state(.rst(autotest_reset)) = {START,FAIL}; // create states for testing each of the fsm.
+  }
+  
+  always {
+    autotest_reset = testButton.out | rst;
+    counter.d = counter.q + 1;
+  
+    case(state.q){
+      
+      state.START:
+        //default
+        alu.alufn=0;
+        out = {4d0,4d0,4d0,4d0};
+        alu.a =0;
+        alu.b=0;
+        if (counter.q[25]) {
+          state.d = state.FAIL;
+        }
+      state.FAIL:
+        alu.alufn = 6b000011; 
+        alu.a = 16b100; 
+                alu.b = 16b011; 
+        if (alu.out == 16b0000000111000001){ 
+          out = {4d0,4d0,4d1,4d9};  
+        }
+        else {
+            out = {4d10,4d11,4d1,4d13};
+        }
+       default:
+        state.d = state.START;
+        out = {4d0,4d0,4d0,4d0};
+        alu.a =0;
+        alu.b=0;
+        alu.alufn=0;
+    }
+  }
+}

@@ -1,0 +1,21 @@
+module boolean (
+    output out[16],
+    input alufn[6],
+    input a[16],
+    input b[16]
+    
+  ) {
+
+  always {
+    case(alufn[3:0]){
+      4b1000: out = a & b; //AND
+      4b1110: out = a | b; //OR
+      4b0110: out = a ^ b; //XOR
+      4b1010: out = a; //"A"
+      4b0111: out = ~(a & b); //NAND
+      4b0001: out = ~(a | b); //NOR
+      4b1001: out = ~(a ^ b); //XNOR
+      default: out = 16b0000000000000000;
+    }
+  }
+}

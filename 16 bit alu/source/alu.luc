@@ -1,0 +1,52 @@
+module alu (
+    output out[16], // output
+    
+    input a[16],  //input a
+    input b[16],  // input b
+    input alufn[6], //6 digits control signals
+    
+    output z, // z
+    output v, // v
+    output n, // n
+    output overflow
+
+
+  ) {
+  
+  adder add;
+  boolean boolean;
+  comparator compare;
+  shifter shift;
+  
+  always {
+    out = 0;
+    add.a = a;
+    add.b = b;
+    add.alufn = alufn;
+    z = add.z;
+    v = add.v;
+    n = add.n;
+    overflow = add.overflow;
+    
+    boolean.a = a;
+    boolean.b = b;
+    boolean.alufn = alufn;
+    
+    compare.z = add.z;
+    compare.v = add.v;
+    compare.n = add.n;
+    compare.alufn = alufn;
+    
+    shift.a = a;
+    shift.b = b;
+    shift.alufn = alufn;
+    
+    case(alufn[5:4]){
+      2b00: out = add.out;
+      2b01: out = boolean.out;
+      2b10: out = shift.out;
+      2b11: out = compare.out;
+    }
+    
+  }
+}

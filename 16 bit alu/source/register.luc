@@ -1,0 +1,33 @@
+module register (
+    input clk,  // clock
+    input buttonA,  // reset
+    input buttonB,
+    input switch[16],
+    output geta[16],
+    output getb[16]
+  ) {
+  
+  button_conditioner button_condA(.clk(clk), .in(buttonA)); // button conditioner for debouncing of button
+  button_conditioner button_condB(.clk(clk), .in(buttonB)); 
+
+  .clk(clk){
+  edge_detector edge1(#RISE(1), #FALL(0), .in(button_condA.out)); // edge_detector  
+  edge_detector edge2(#RISE(1), #FALL(0), .in(button_condB.out));
+  }
+  
+  dff registerA[16](.clk(clk)); // here set 2 dff  to store the value of 16bits A & B
+  dff registerB[16](.clk(clk)); //also connect to clk
+
+  always {
+
+    if(edge1.out){ //  button A is pressed
+        registerA.d = switch; // set the register of A to store the value of the hardware switches
+    }
+    if(edge2.out){ // i button B is presssed
+        registerB.d = switch; // set the register of B to store the value of the hardware switches
+    }
+    geta = registerA.q; // get value of A
+    getb = registerB.q; // get value of B
+  }
+}
+
